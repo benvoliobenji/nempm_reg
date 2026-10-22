@@ -1,0 +1,17 @@
+{
+  "$schema": "../schema/package.schema.json",
+  "id": "nemesis-core",
+  "name": "Nemesis Core",
+  "description": "SAMPLE: the core data file, written to the drive root as NEMESIS.data.",
+  "version": "1.0.0",
+  "format": "tar",
+  "core": true,
+  "url": "https://github.com/OWNER/nemesis-core/releases/download/v1.0.0/nemesis-core.tar",
+  "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "size": 10240,
+  "extract": false,
+  "slot": "core",
+  "profiles": ["nemesis"],
+  "deps": [],
+  "homepage": "https://github.com/OWNER/nemesis-core"
+}

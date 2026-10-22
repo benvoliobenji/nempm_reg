@@ -1,0 +1,30 @@
+{
+  "$schema": "../schema/profile.schema.json",
+  "id": "nemesis",
+  "name": "Nemesis",
+  "description": "Drive root holds NEMESIS.data (the core tar, never unpacked); each tool is packages/<tool>.zip.",
+  "version": 1,
+  "filesystems": ["exfat", "fat32"],
+  "maxFileBytes": { "fat32": 4294967295 },
+  "requiredDirs": ["packages"],
+  "slots": {
+    "core": {
+      "description": "The core data file at the drive root.",
+      "path": "",
+      "file": "NEMESIS.data",
+      "allow": ["tar"],
+      "extract": "never",
+      "max": 1
+    },
+    "packages": {
+      "description": "One zip per tool.",
+      "path": "packages",
+      "file": "{id}.zip",
+      "allow": ["zip"],
+      "extract": "optional",
+      "extractDir": "packages/{id}"
+    }
+  },
+  "naming": { "pattern": "^[a-z0-9-]+$", "case": "lower" },
+  "reserved": [".pkgmgr"]
+}
