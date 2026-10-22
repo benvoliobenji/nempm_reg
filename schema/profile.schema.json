@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://OWNER.github.io/pkgmgr-registry/schema/profile.schema.json",
+  "$id": "https://benvoliobenji.github.io/pkgmgr-registry/schema/profile.schema.json",
   "title": "Target profile",
   "description": "The USB layout a target device expects. The file name must be <id>.json. Bump version on every change so drives can be migrated.",
   "type": "object",
@@ -59,7 +59,9 @@
     }
   },
   "$defs": {
-    "filesystem": { "enum": ["fat32", "exfat", "ntfs", "apfs", "hfsplus", "ext4"] },
+    "filesystem": {
+      "enum": ["fat32", "exfat", "ntfs", "apfs", "hfsplus", "ext4"]
+    },
     "relPath": {
       "description": "A drive-relative path using forward slashes. Empty means the drive root. May use {id}, {version} and {format}.",
       "type": "string",
@@ -76,8 +78,14 @@
       "required": ["path", "allow", "extract"],
       "properties": {
         "description": { "type": "string", "maxLength": 200 },
-        "path": { "$ref": "#/$defs/relPath", "description": "Folder the package file is written to." },
-        "file": { "$ref": "#/$defs/fileName", "description": "File name on the drive. Defaults to the asset's own file name." },
+        "path": {
+          "$ref": "#/$defs/relPath",
+          "description": "Folder the package file is written to."
+        },
+        "file": {
+          "$ref": "#/$defs/fileName",
+          "description": "File name on the drive. Defaults to the asset's own file name."
+        },
         "allow": {
           "type": "array",
           "minItems": 1,
@@ -85,8 +93,15 @@
           "items": { "enum": ["zip", "tar"] }
         },
         "extract": { "enum": ["never", "optional", "always"] },
-        "extractDir": { "$ref": "#/$defs/relPath", "description": "Folder a zip is unpacked into. Must contain {id}. Defaults to <path>/{id}." },
-        "max": { "type": "integer", "minimum": 1, "description": "Maximum packages installed in this slot at once." }
+        "extractDir": {
+          "$ref": "#/$defs/relPath",
+          "description": "Folder a zip is unpacked into. Must contain {id}. Defaults to <path>/{id}."
+        },
+        "max": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum packages installed in this slot at once."
+        }
       }
     }
   }
