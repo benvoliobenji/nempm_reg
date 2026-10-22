@@ -10,7 +10,7 @@
   "scripts": {
     "validate": "node scripts/validate.mjs",
     "build": "node scripts/build-index.mjs",
-    "test": "node --test test/"
+    "test": "node --test"
   },
   "dependencies": {
     "ajv": "^8.20.0",
