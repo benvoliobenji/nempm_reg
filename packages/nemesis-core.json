@@ -2,16 +2,16 @@
   "$schema": "../schema/package.schema.json",
   "id": "nemesis-core",
   "name": "Nemesis Core",
-  "description": "SAMPLE: the core data file, written to the drive root as NEMESIS.data.",
+  "description": "The core NEMESIS package. Used to install all other packages once rooted.",
   "version": "1.0.0",
   "format": "tar",
   "core": true,
-  "url": "https://github.com/OWNER/nemesis-core/releases/download/v1.0.0/nemesis-core.tar",
-  "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
-  "size": 10240,
+  "url": "https://github.com/benvoliobenji/hmg_nemesis/releases/download/v1.0.0/ota_package.tar",
+  "sha256": "cda5195e4759b6bbcb6a6f35314bef5d216bc61b639b22a9ae83176f7c6af8a0",
+  "size": 174080,
   "extract": false,
   "slot": "core",
   "profiles": ["nemesis"],
   "deps": [],
-  "homepage": "https://github.com/OWNER/nemesis-core"
+  "homepage": "https://github.com/benvoliobenji/hmg_nemesis"
 }
