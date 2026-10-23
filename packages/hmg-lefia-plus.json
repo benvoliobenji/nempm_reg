@@ -1,0 +1,17 @@
+{
+  "$schema": "../schema/package.schema.json",
+  "id": "hmg-lefia-plus",
+  "name": "HMG Lefia Plus",
+  "description": "Toolkit that supports wireless android auto and carplay.",
+  "version": "0.1.0",
+  "format": "zip",
+  "core": false,
+  "url": "https://github.com/benvoliobenji/HMG-Leafia-Plus/releases/download/v1.0.0/wireless-carplay-aa.zip",
+  "sha256": "03915b3b21a1512225a2dfec2a145033bb218ba334c0a7d35f04fc70b4df3365",
+  "size": 2558066,
+  "extract": true,
+  "slot": "packages",
+  "profiles": ["nemesis"],
+  "requires": ["nemesis-core"],
+  "homepage": "https://github.com/benvoliobenji/HMG-Leafia-Plus"
+}
