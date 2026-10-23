@@ -102,12 +102,16 @@ export function profileProblems(file, profile) {
     if (slot.path !== "" && reserved.has(firstSegment(slot.path))) {
       out.push(new Problem(file, `${label} path "${slot.path}" is inside a reserved folder`));
     }
+    // Without {id} in the path or file name, two packages in one slot would
+    // collide, unless the slot (or the whole drive) only ever holds one.
+    const holdsOne = slot.max === 1 || profile.maxPackages === 1;
     if (slot.extract !== "never") {
       if (!slot.allow.includes("zip")) out.push(new Problem(file, `${label} extracts but does not allow zip`));
+      // Empty means the drive root.
       const extractDir = slot.extractDir ?? (slot.path ? `${slot.path}/{id}` : "{id}");
       out.push(...templateProblems(file, `${label} extractDir`, extractDir));
-      if (!extractDir.includes("{id}")) {
-        out.push(new Problem(file, `${label} extractDir "${extractDir}" must contain {id}`));
+      if (!extractDir.includes("{id}") && !holdsOne) {
+        out.push(new Problem(file, `${label} extractDir "${extractDir}" must contain {id}, or the slot needs max: 1`));
       }
       if (reserved.has(firstSegment(extractDir))) {
         out.push(new Problem(file, `${label} extractDir "${extractDir}" is inside a reserved folder`));
@@ -118,9 +122,6 @@ export function profileProblems(file, profile) {
     if (slot.allow.includes("tar") && slot.extract === "always") {
       out.push(new Problem(file, `${label} allows tar but extract is "always"; tar is never unpacked`));
     }
-    // Without {id} in the path or file name, two packages in one slot would
-    // collide, unless the slot (or the whole drive) only ever holds one.
-    const holdsOne = slot.max === 1 || profile.maxPackages === 1;
     if (!slot.file && !holdsOne && !slot.path.includes("{id}")) {
       out.push(new Problem(file, `${label} needs {id} in path or file, or max: 1`));
     }

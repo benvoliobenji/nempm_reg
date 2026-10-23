@@ -105,8 +105,10 @@ test("schema: ids may contain dots, but not leading, trailing or doubled", () =>
   }
 });
 
-test("semantic: profile extractDir must contain {id}", () => {
+test("semantic: extractDir needs {id} unless the drive holds one package", () => {
+  assert.equal(nemesis.slots.packages.extractDir, "", "Nemesis unpacks into the drive root");
   const profile = clone(nemesis);
+  delete profile.maxPackages;
   profile.slots.packages.extractDir = "packages/all";
   assert.match(profileProblems("profiles/nemesis.json", profile).map(String).join("\n"), /must contain \{id\}/);
 });

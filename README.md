@@ -41,8 +41,11 @@ A Core stick, used to set up a new device before any tool:
   .pkgmgr/manifest.json
 ```
 
-A zip package can optionally be unpacked to `packages/<tool>/` instead, if a
-user switches **Extract** on for that install.
+A zip package can be unpacked instead (its `extract` default, or the user's
+**Unpack** switch): its contents go straight into the drive root, so a zip that
+holds `packages/<x>.zip` and other folders lays them out exactly as packaged,
+next to `NEMESIS.data`. Swapping to another package removes every file it wrote
+and any folder left empty, `packages/` included.
 
 The profile's `version` must be bumped whenever the layout changes; the app sees
 the new version and offers to migrate drives that were written with the old one.

@@ -2,8 +2,8 @@
   "$schema": "../schema/profile.schema.json",
   "id": "nemesis",
   "name": "Nemesis",
-  "description": "One package per stick. Core: its .tar at the drive root. Any other package: its NEMESIS.data at the root plus packages/<tool>.zip.",
-  "version": 2,
+  "description": "One package per stick. Core: its .tar at the drive root. Any other package: its NEMESIS.data at the root plus packages/<tool>.zip, or the zip unpacked into the root.",
+  "version": 3,
   "filesystems": ["exfat", "fat32"],
   "maxFileBytes": {
     "fat32": 4294967295
@@ -17,12 +17,12 @@
       "extract": "never"
     },
     "packages": {
-      "description": "A tool package, with the NEMESIS.data from its release at the drive root.",
+      "description": "A tool package, with the NEMESIS.data from its release at the drive root. Unpacked, the zip's contents go straight into the root.",
       "path": "packages",
       "file": "{id}.zip",
       "allow": ["zip"],
       "extract": "optional",
-      "extractDir": "packages/{id}",
+      "extractDir": "",
       "dataFile": "NEMESIS.data"
     }
   },
