@@ -12,6 +12,5 @@
   "extract": false,
   "slot": "core",
   "profiles": ["nemesis"],
-  "deps": [],
   "homepage": "https://github.com/benvoliobenji/hmg_nemesis"
 }

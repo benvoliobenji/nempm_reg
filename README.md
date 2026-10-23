@@ -15,14 +15,30 @@ To add or update a package, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## The Nemesis profile
 
-[`profiles/nemesis.json`](profiles/nemesis.json) describes the drive layout:
+[`profiles/nemesis.json`](profiles/nemesis.json) describes the drive layout. A
+stick carries **one package at a time**; installing another replaces it once the
+user confirms.
+
+A tool package stick:
 
 ```text
 <drive root>/
-  NEMESIS.data            the core data file required by NEMESIS to function per package
+  NEMESIS.data            the data file the Core system reads to install this package
   packages/
     <tool>.zip            the tool package
   .pkgmgr/manifest.json   written by the app: what is installed, and where
+```
+
+`NEMESIS.data` belongs to the package: it is published as an asset of the same
+GitHub release as the zip (the manifest's `data` field), written and removed
+together with it.
+
+A Core stick, used to set up a new device before any tool:
+
+```text
+<drive root>/
+  ota_package.tar         the Core .tar, under its release file name, never unpacked
+  .pkgmgr/manifest.json
 ```
 
 A zip package can optionally be unpacked to `packages/<tool>/` instead, if a
@@ -42,5 +58,5 @@ node scripts/validate.mjs --verify-all    # download and hash every asset
 pnpm build                                # writes dist/index.json
 ```
 
-The two sample manifests (`nemesis-core`, `example-tool`) have placeholder URLs
-and zero hashes. Replace them with real packages before publishing the index.
+The `example-tool` manifest is a sample with placeholder URLs and zero hashes.
+Replace it with real packages before publishing the index.

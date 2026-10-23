@@ -46,8 +46,11 @@ if (values.base) {
 if (values["verify-all"]) toVerify = registry.packages.filter((p) => !p.error);
 
 for (const { file, data } of toVerify) {
-  console.log(`Verifying ${data.url}`);
-  for (const message of await verifyAsset(data)) problems.push(new Problem(file, message));
+  const assets = [["", data], ["data: ", data.data]].filter(([, asset]) => asset);
+  for (const [label, asset] of assets) {
+    console.log(`Verifying ${asset.url}`);
+    for (const message of await verifyAsset(asset)) problems.push(new Problem(file, `${label}${message}`));
+  }
 }
 
 if (problems.length > 0) {

@@ -118,15 +118,32 @@ export function profileProblems(file, profile) {
     if (slot.allow.includes("tar") && slot.extract === "always") {
       out.push(new Problem(file, `${label} allows tar but extract is "always"; tar is never unpacked`));
     }
-    if (!slot.file && (slot.max ?? Infinity) > 1 && !slot.path.includes("{id}")) {
-      // Without {id} in the path or file name, two packages would collide.
+    // Without {id} in the path or file name, two packages in one slot would
+    // collide, unless the slot (or the whole drive) only ever holds one.
+    const holdsOne = slot.max === 1 || profile.maxPackages === 1;
+    if (!slot.file && !holdsOne && !slot.path.includes("{id}")) {
       out.push(new Problem(file, `${label} needs {id} in path or file, or max: 1`));
     }
-    if (slot.file && !slot.file.includes("{id}") && !slot.path.includes("{id}") && slot.max !== 1) {
+    if (slot.file && !slot.file.includes("{id}") && !slot.path.includes("{id}") && !holdsOne) {
       out.push(new Problem(file, `${label} file "${slot.file}" has no {id}, so the slot needs max: 1`));
+    }
+    if (slot.dataFile !== undefined) {
+      out.push(...templateProblems(file, `${label} dataFile`, slot.dataFile));
+      if (slot.dataFile === "") out.push(new Problem(file, `${label} dataFile must name a file`));
+      if (reserved.has(firstSegment(slot.dataFile))) {
+        out.push(new Problem(file, `${label} dataFile "${slot.dataFile}" is inside a reserved folder`));
+      }
+      if (!slot.dataFile.includes("{id}") && !holdsOne) {
+        out.push(new Problem(file, `${label} dataFile "${slot.dataFile}" has no {id}, so the slot needs max: 1`));
+      }
     }
   }
   return out;
+}
+
+/** The `.../releases/download/<tag>/` part of a release asset URL. */
+function releaseOf(url) {
+  return url.match(/^(https:\/\/github\.com\/[^/]+\/[^/]+\/releases\/download\/[^/]+\/)/)?.[1];
 }
 
 /** Package checks against the other packages and profiles. */
@@ -155,34 +172,33 @@ export function packageProblems(file, pkg, profilesById, packagesById) {
     if (pkg.extract && slot.extract === "never") {
       out.push(new Problem(file, `extract is true but slot "${pkg.slot}" in profile "${profileId}" never extracts`));
     }
+    if (slot.dataFile !== undefined && !pkg.data) {
+      out.push(
+        new Problem(
+          file,
+          `slot "${pkg.slot}" in profile "${profileId}" writes ${slot.dataFile}, so the package needs "data": the ${slot.dataFile} asset from its release`,
+        ),
+      );
+    }
+    if (slot.dataFile === undefined && pkg.data) {
+      out.push(new Problem(file, `slot "${pkg.slot}" in profile "${profileId}" has no data file, so remove "data"`));
+    }
     const fat32Max = profile.maxFileBytes?.fat32;
-    if (fat32Max && pkg.size > fat32Max && profile.filesystems.includes("fat32")) {
-      out.push(new Problem(file, `size ${pkg.size} exceeds FAT32's per-file limit; profile "${profileId}" must drop fat32`));
+    if (fat32Max && profile.filesystems.includes("fat32")) {
+      for (const [label, size] of [["size", pkg.size], ["data.size", pkg.data?.size ?? 0]]) {
+        if (size > fat32Max) {
+          out.push(new Problem(file, `${label} ${size} exceeds FAT32's per-file limit; profile "${profileId}" must drop fat32`));
+        }
+      }
     }
   }
-  for (const dep of pkg.deps ?? []) {
-    if (dep === pkg.id) out.push(new Problem(file, "a package cannot depend on itself"));
-    else if (!packagesById.has(dep)) out.push(new Problem(file, `dependency "${dep}" does not exist`));
+  if (pkg.data && releaseOf(pkg.data.url) !== releaseOf(pkg.url)) {
+    out.push(new Problem(file, "data.url must be an asset of the same release as url"));
   }
-  return out;
-}
-
-function cycleProblems(packages) {
-  const byId = new Map(packages.map((p) => [p.data.id, p]));
-  const state = new Map();
-  const out = [];
-  const visit = (id, trail) => {
-    if (state.get(id) === "done") return;
-    if (state.get(id) === "active") {
-      const entry = byId.get(trail[0]);
-      out.push(new Problem(entry.file, `dependency cycle: ${[...trail, id].join(" -> ")}`));
-      return;
-    }
-    state.set(id, "active");
-    for (const dep of byId.get(id)?.data.deps ?? []) if (byId.has(dep)) visit(dep, [...trail, id]);
-    state.set(id, "done");
-  };
-  for (const id of byId.keys()) visit(id, []);
+  for (const req of pkg.requires ?? []) {
+    if (req === pkg.id) out.push(new Problem(file, "a package cannot require itself"));
+    else if (!packagesById.has(req)) out.push(new Problem(file, `required package "${req}" does not exist`));
+  }
   return out;
 }
 
@@ -214,7 +230,6 @@ export function validateRegistry(registry, schemas) {
   }
   const packagesById = new Map(valid.map((p) => [p.data.id, p.data]));
   for (const { file, data } of valid) out.push(...packageProblems(file, data, profilesById, packagesById));
-  out.push(...cycleProblems(valid));
   const cores = new Map();
   for (const { data } of valid.filter((p) => p.data.core)) {
     for (const profileId of data.profiles) cores.set(profileId, [...(cores.get(profileId) ?? []), data.id]);

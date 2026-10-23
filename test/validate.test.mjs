@@ -66,17 +66,43 @@ test("semantic: format must be allowed by the slot", () => {
   assert.match(problems.map(String).join("\n"), /does not allow zip/);
 });
 
-test("semantic: unknown dependencies are rejected", () => {
+test("semantic: unknown required packages are rejected", () => {
   const pkg = clone(zipPkg);
-  pkg.deps = ["nope"];
+  pkg.requires = ["nope"];
   const problems = packageProblems("packages/example-tool.json", pkg, profiles, packages);
-  assert.match(problems.map(String).join("\n"), /dependency "nope" does not exist/);
+  assert.match(problems.map(String).join("\n"), /required package "nope" does not exist/);
 });
 
-test("semantic: dependency cycles are rejected", () => {
-  const reg = clone(registry);
-  reg.packages.find((p) => p.data.id === "nemesis-core").data.deps = ["example-tool"];
-  assert.match(validateRegistry(reg, schemas).map(String).join("\n"), /dependency cycle/);
+test("semantic: a tool in a slot with a dataFile must publish its NEMESIS.data", () => {
+  const pkg = clone(zipPkg);
+  delete pkg.data;
+  const problems = packageProblems("packages/example-tool.json", pkg, profiles, packages);
+  assert.match(problems.map(String).join("\n"), /needs "data"/);
+});
+
+test("semantic: the data asset must come from the same release", () => {
+  const pkg = clone(zipPkg);
+  pkg.data.url = "https://github.com/OWNER/example-tool/releases/download/v0.9.0/NEMESIS.data";
+  const problems = packageProblems("packages/example-tool.json", pkg, profiles, packages);
+  assert.match(problems.map(String).join("\n"), /same release/);
+});
+
+test("schema + semantic: the core can't carry a data file", () => {
+  const core = clone(registry.packages.find((p) => p.data.core).data);
+  core.data = clone(zipPkg.data);
+  assert.equal(schemas.package(core), false);
+  const problems = packageProblems("packages/nemesis-core.json", core, profiles, packages);
+  assert.match(problems.map(String).join("\n"), /remove "data"/);
+});
+
+test("schema: ids may contain dots, but not leading, trailing or doubled", () => {
+  const pkg = clone(zipPkg);
+  pkg.id = "my.tool";
+  assert.equal(schemas.package(pkg), true);
+  assert.deepEqual(packageProblems("packages/my.tool.json", pkg, profiles, packages).map(String), []);
+  for (const bad of ["my..tool", ".tool", "tool.", "My.Tool"]) {
+    assert.equal(schemas.package({ ...pkg, id: bad }), false, bad);
+  }
 });
 
 test("semantic: profile extractDir must contain {id}", () => {
@@ -91,10 +117,13 @@ test("semantic: slot paths cannot climb out of the drive", () => {
   assert.match(profileProblems("profiles/nemesis.json", profile).map(String).join("\n"), /must not contain/);
 });
 
-test("semantic: fixed file names need max: 1", () => {
+test("semantic: fixed file names need max: 1 unless the drive holds one package", () => {
+  assert.deepEqual(profileProblems("profiles/nemesis.json", nemesis).map(String), []);
   const profile = clone(nemesis);
-  delete profile.slots.core.max;
-  assert.match(profileProblems("profiles/nemesis.json", profile).map(String).join("\n"), /needs max: 1/);
+  delete profile.maxPackages;
+  const problems = profileProblems("profiles/nemesis.json", profile).map(String).join("\n");
+  assert.match(problems, /slot "core" needs \{id\} in path or file, or max: 1/);
+  assert.match(problems, /dataFile "NEMESIS.data" has no \{id\}/);
 });
 
 test("version bump: same or lower version fails, higher passes, new file passes", () => {
@@ -103,7 +132,8 @@ test("version bump: same or lower version fails, higher passes, new file passes"
   assert.ok(versionBumpProblem(file, { version: "0.9.0" }, { version: "1.0.0" }));
   assert.equal(versionBumpProblem(file, { version: "1.0.1" }, { version: "1.0.0" }), null);
   assert.equal(versionBumpProblem(file, { version: "1.0.0" }, null), null);
-  assert.ok(versionBumpProblem("profiles/nemesis.json", { version: 1 }, { version: 1 }));
+  assert.ok(versionBumpProblem("profiles/nemesis.json", { version: 2 }, { version: 2 }));
+  assert.equal(versionBumpProblem("profiles/nemesis.json", { version: 2 }, { version: 1 }), null);
 });
 
 test("index: merges packages and profiles without $schema keys", () => {

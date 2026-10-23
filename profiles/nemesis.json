@@ -2,29 +2,33 @@
   "$schema": "../schema/profile.schema.json",
   "id": "nemesis",
   "name": "Nemesis",
-  "description": "Drive root holds NEMESIS.data (the core tar, never unpacked); each tool is packages/<tool>.zip.",
-  "version": 1,
+  "description": "One package per stick. Core: its .tar at the drive root. Any other package: its NEMESIS.data at the root plus packages/<tool>.zip.",
+  "version": 2,
   "filesystems": ["exfat", "fat32"],
-  "maxFileBytes": { "fat32": 4294967295 },
-  "requiredDirs": ["packages"],
+  "maxFileBytes": {
+    "fat32": 4294967295
+  },
+  "maxPackages": 1,
   "slots": {
     "core": {
-      "description": "The core data file at the drive root.",
+      "description": "Nemesis Core, put onto a new device first. The .tar keeps its release file name at the drive root.",
       "path": "",
-      "file": "NEMESIS.data",
       "allow": ["tar"],
-      "extract": "never",
-      "max": 1
+      "extract": "never"
     },
     "packages": {
-      "description": "One zip per tool.",
+      "description": "A tool package, with the NEMESIS.data from its release at the drive root.",
       "path": "packages",
       "file": "{id}.zip",
       "allow": ["zip"],
       "extract": "optional",
-      "extractDir": "packages/{id}"
+      "extractDir": "packages/{id}",
+      "dataFile": "NEMESIS.data"
     }
   },
-  "naming": { "pattern": "^[a-z0-9-]+$", "case": "lower" },
+  "naming": {
+    "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$",
+    "case": "lower"
+  },
   "reserved": [".pkgmgr"]
 }

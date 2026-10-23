@@ -2,16 +2,21 @@
   "$schema": "../schema/package.schema.json",
   "id": "example-tool",
   "name": "Example Tool",
-  "description": "SAMPLE: a tool package, written to packages/example-tool.zip.",
+  "description": "SAMPLE: a tool package. Writes NEMESIS.data and packages/example-tool.zip.",
   "version": "1.0.0",
   "format": "zip",
   "core": false,
   "url": "https://github.com/OWNER/example-tool/releases/download/v1.0.0/example-tool.zip",
   "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
   "size": 2048,
+  "data": {
+    "url": "https://github.com/OWNER/example-tool/releases/download/v1.0.0/NEMESIS.data",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "size": 512
+  },
   "extract": false,
   "slot": "packages",
   "profiles": ["nemesis"],
-  "deps": ["nemesis-core"],
+  "requires": ["nemesis-core"],
   "homepage": "https://github.com/OWNER/example-tool"
 }

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://benvoliobenji.github.io/pkgmgr-registry/schema/package.schema.json",
+  "$id": "https://benvoliobenji.github.io/nempm_reg/schema/package.schema.json",
   "title": "Package manifest",
   "description": "One installable package. The file name must be <id>.json.",
   "type": "object",
@@ -18,9 +18,17 @@
     "profiles"
   ],
   "properties": {
-    "$schema": { "type": "string" },
-    "id": { "$ref": "#/$defs/id" },
-    "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "$schema": {
+      "type": "string"
+    },
+    "id": {
+      "$ref": "#/$defs/id"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
     "description": {
       "type": "string",
       "minLength": 1,
@@ -32,27 +40,40 @@
       "description": "Semantic version. Must increase on every change.",
       "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?$"
     },
-    "format": { "enum": ["zip", "tar"] },
+    "format": {
+      "enum": ["zip", "tar"]
+    },
     "core": {
       "type": "boolean",
       "default": false,
-      "description": "The core package. Installed before everything else."
+      "description": "The Nemesis Core package (a .tar). It goes onto a new device before any other package, on a stick of its own."
     },
     "url": {
-      "type": "string",
-      "format": "uri",
-      "description": "A GitHub Release asset download URL on a repo with immutable releases enabled.",
-      "pattern": "^https://github\\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/releases/download/[^/]+/[^/]+$"
+      "$ref": "#/$defs/releaseUrl",
+      "description": "The package's GitHub Release asset, on a repo with immutable releases enabled."
     },
     "sha256": {
-      "type": "string",
-      "pattern": "^[a-f0-9]{64}$",
-      "description": "Lowercase hex SHA-256 of the asset."
+      "$ref": "#/$defs/sha256"
     },
     "size": {
-      "type": "integer",
-      "minimum": 1,
-      "description": "Asset size in bytes."
+      "$ref": "#/$defs/size"
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "sha256", "size"],
+      "description": "The package's NEMESIS.data, published as an asset of the same release. Written to the stick next to the package. Required by slots with a dataFile.",
+      "properties": {
+        "url": {
+          "$ref": "#/$defs/releaseUrl"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "size": {
+          "$ref": "#/$defs/size"
+        }
+      }
     },
     "extract": {
       "type": "boolean",
@@ -67,39 +88,90 @@
       "type": "array",
       "minItems": 1,
       "uniqueItems": true,
-      "items": { "$ref": "#/$defs/id" }
+      "items": {
+        "$ref": "#/$defs/id"
+      }
     },
-    "deps": {
+    "requires": {
       "type": "array",
       "uniqueItems": true,
       "default": [],
-      "items": { "$ref": "#/$defs/id" }
+      "description": "Packages that must already be installed on the device (not the stick), such as nemesis-core. Shown to users; never installed automatically.",
+      "items": {
+        "$ref": "#/$defs/id"
+      }
     },
-    "homepage": { "type": "string", "format": "uri", "pattern": "^https://" }
+    "homepage": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://"
+    }
   },
   "allOf": [
     {
       "if": {
-        "properties": { "format": { "const": "tar" } },
+        "properties": {
+          "format": {
+            "const": "tar"
+          }
+        },
         "required": ["format"]
       },
-      "then": { "properties": { "extract": { "const": false } } }
+      "then": {
+        "properties": {
+          "extract": {
+            "const": false
+          }
+        }
+      }
     },
     {
       "if": {
-        "properties": { "core": { "const": true } },
+        "properties": {
+          "core": {
+            "const": true
+          }
+        },
         "required": ["core"]
       },
       "then": {
         "properties": {
-          "format": { "const": "tar" },
-          "extract": { "const": false }
+          "format": {
+            "const": "tar"
+          },
+          "extract": {
+            "const": false
+          },
+          "data": false
         }
       }
     }
   ],
   "$defs": {
-    "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$" },
-    "slotName": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,31}$" }
+    "id": {
+      "type": "string",
+      "maxLength": 64,
+      "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$"
+    },
+    "slotName": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,31}$"
+    },
+    "releaseUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "A GitHub Release asset download URL.",
+      "pattern": "^https://github\\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/releases/download/[^/]+/[^/]+$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "Lowercase hex SHA-256 of the asset."
+    },
+    "size": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Asset size in bytes."
+    }
   }
 }
