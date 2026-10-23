@@ -26,19 +26,25 @@ A tool package stick:
   NEMESIS.data            the data file the Core system reads to install this package
   packages/
     <tool>.zip            the tool package
-  .pkgmgr/manifest.json   written by the app: what is installed, and where
+  .nempm/manifest.json    written by the app: what is installed, and where
 ```
 
-`NEMESIS.data` belongs to the package: it is published as an asset of the same
-GitHub release as the zip (the manifest's `data` field), written and removed
-together with it.
+`NEMESIS.data` belongs to the package and is written and removed together with
+it. It comes one of two ways:
+
+- as an asset of the same GitHub release as the zip (the manifest's `data`
+  field), or
+- inside the zip itself, at its top level, for a zip that already holds the
+  whole stick layout. Such a package sets `"extract": true` and has no `data`;
+  the app always unpacks it into the drive root, which puts `NEMESIS.data` in
+  place.
 
 A Core stick, used to set up a new device before any tool:
 
 ```text
 <drive root>/
   ota_package.tar         the Core .tar, under its release file name, never unpacked
-  .pkgmgr/manifest.json
+  .nempm/manifest.json
 ```
 
 A zip package can be unpacked instead (its `extract` default, or the user's

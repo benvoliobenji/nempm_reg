@@ -1,4 +1,4 @@
-# Who may approve registry changes. Replace OWNER with the GitHub users or team
+# Who may approve registry changes. List the GitHub users or team
 # allowed to merge, then turn on "Require review from Code Owners" in the main
 # branch protection rule (Settings → Branches).
 *                 @benvoliobenji

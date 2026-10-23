@@ -5,6 +5,9 @@ that points at it. A Nemesis stick holds one package at a time.
 
 - **A tool package** is a `.zip` and its `NEMESIS.data`, both attached to the
   same release. The app writes them as `packages/<id>.zip` and `NEMESIS.data`.
+  Or it is just a `.zip` that holds the stick layout, `NEMESIS.data` included,
+  which the app unpacks into the drive root (see
+  [Zip-only releases](#zip-only-releases)).
 - **The Core package** is a single `.tar`. The app writes it to the drive root
   under its release file name, and it is installed onto a new device before any
   tool.
@@ -16,7 +19,8 @@ that points at it. A Nemesis stick holds one package at a time.
    so the hashes in the registry stay valid forever.
 2. Create a release with a new tag (for example `v1.4.0`) and attach:
    - the package, named after its id: `my.tool.zip`
-   - its data file, named `NEMESIS.data` (tool packages only)
+   - its data file, named `NEMESIS.data` (tool packages only, unless the zip
+     carries it)
 3. Publish it, then copy each asset's download link. They look like
    `https://github.com/<you>/<repo>/releases/download/v1.4.0/my.tool.zip`.
 
@@ -64,14 +68,32 @@ Create or edit `packages/<id>.json`. The file name must be the id.
 | `id`       | Lowercase letters and digits, separated by single `.` or `-`. Becomes the file name on the drive (`packages/my.tool.zip`). Never change it after first release. |
 | `version`  | Semantic version. Must be higher than the one on `main` for every change.                                                                                       |
 | `format`   | `zip`, or `tar` for the Core package.                                                                                                                           |
-| `data`     | The `NEMESIS.data` asset from the **same release**. Required for tool packages (slot `packages`); not allowed for Core.                                         |
-| `extract`  | Whether the app unpacks the zip by default. Users can override it. A tar is never unpacked.                                                                     |
+| `data`     | The `NEMESIS.data` asset from the **same release**. Required for tool packages (slot `packages`) unless the zip carries it; not allowed for Core.               |
+| `extract`  | Whether the app unpacks the zip by default. Users can override it, except for a zip that carries `NEMESIS.data`. A tar is never unpacked.                       |
 | `slot`     | Where the file goes, by name. For Nemesis: `packages` for tools, `core` for Core.                                                                               |
 | `profiles` | The devices this package works on.                                                                                                                              |
 | `requires` | Packages that must already be installed on the **device** (not the stick), usually `nemesis-core`. Shown to users; the app never installs them automatically.   |
 
 For the Core package, leave out `data` and `requires` and set `"core": true`,
 `"format": "tar"` and `"slot": "core"`.
+
+### Zip-only releases
+
+A zip can carry the whole stick layout itself, `NEMESIS.data` included:
+
+```text
+my.tool.zip
+  NEMESIS.data
+  packages/my.tool.inner.zip
+  mytool/install.sh
+```
+
+Leave out `data` and set `"extract": true`. The app always unpacks such a zip
+into the drive root, so `NEMESIS.data` lands where the device reads it.
+`NEMESIS.data` must be at the top of the zip, not inside a folder: zip the
+folder's contents, not the folder itself. The validator opens the zip to check
+this, and also rejects a release that ships `NEMESIS.data` both inside the zip
+and as a `data` asset.
 
 ## 4. Check locally, then open a PR
 
@@ -82,9 +104,9 @@ node scripts/validate.mjs --base main
 
 This runs everything CI runs: the schema, id/file-name match, slot and data-file
 checks, the version bump, and a real download of every asset to confirm `sha256`
-and `size`. Open the PR when it prints `OK`. A Code Owner reviews and merges it,
-and the new index goes live on Pages within one CI run. The app picks it up the
-next time it refreshes.
+and `size` (and, for a zip, where its `NEMESIS.data` comes from). Open the PR
+when it prints `OK`. A Code Owner reviews and merges it, and the new index goes
+live on Pages within one CI run. The app picks it up the next time it refreshes.
 
 ## Changing a profile
 

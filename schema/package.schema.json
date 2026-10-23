@@ -62,7 +62,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["url", "sha256", "size"],
-      "description": "The package's NEMESIS.data, published as an asset of the same release. Written to the stick next to the package. Required by slots with a dataFile.",
+      "description": "The package's NEMESIS.data, published as an asset of the same release. Written to the stick next to the package. Slots with a dataFile need it, unless the package is a zip with extract: true that carries the file itself.",
       "properties": {
         "url": {
           "$ref": "#/$defs/releaseUrl"
@@ -78,7 +78,7 @@
     "extract": {
       "type": "boolean",
       "default": false,
-      "description": "Default for unpacking a zip on the drive. Users can override per install."
+      "description": "Default for unpacking a zip on the drive. Users can override per install, except for a zip that carries its own data file (no \"data\"), which is always unpacked."
     },
     "slot": {
       "$ref": "#/$defs/slotName",

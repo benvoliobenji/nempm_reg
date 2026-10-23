@@ -19,6 +19,7 @@ import {
   validateRegistry,
   verifyAsset,
   versionBumpProblem,
+  zipProblems,
 } from "./lib.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -45,11 +46,17 @@ if (values.base) {
 }
 if (values["verify-all"]) toVerify = registry.packages.filter((p) => !p.error);
 
+// A zip is also opened to check where its NEMESIS.data comes from.
+const profilesById = new Map(registry.profiles.filter((p) => !p.error).map((p) => [p.data.id, p.data]));
 for (const { file, data } of toVerify) {
-  const assets = [["", data], ["data: ", data.data]].filter(([, asset]) => asset);
-  for (const [label, asset] of assets) {
+  const inspect = data.format === "zip" ? (tail, start) => zipProblems(data, profilesById, tail, start) : undefined;
+  const assets = [
+    ["", data, inspect],
+    ["data: ", data.data],
+  ].filter(([, asset]) => asset);
+  for (const [label, asset, inspect] of assets) {
     console.log(`Verifying ${asset.url}`);
-    for (const message of await verifyAsset(asset)) problems.push(new Problem(file, `${label}${message}`));
+    for (const message of await verifyAsset(asset, { inspect })) problems.push(new Problem(file, `${label}${message}`));
   }
 }
 

@@ -155,7 +155,7 @@
         },
         "dataFile": {
           "$ref": "#/$defs/relPath",
-          "description": "Where a package's data asset (its NEMESIS.data) is written. Packages in this slot must publish one; it is installed and removed with the package."
+          "description": "Where a package's data file (its NEMESIS.data) goes. Packages in this slot publish it as a \"data\" asset, or carry it in a zip that is unpacked; either way it is installed and removed with the package."
         },
         "max": {
           "type": "integer",

@@ -1,5 +1,5 @@
 {
-  "name": "pkgmgr-registry",
+  "name": "nempm-registry",
   "private": true,
   "type": "module",
   "description": "The package registry: one JSON manifest per package, target profiles, and the CI that publishes index.json.",

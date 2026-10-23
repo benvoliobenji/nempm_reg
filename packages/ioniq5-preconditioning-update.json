@@ -1,0 +1,17 @@
+{
+  "$schema": "../schema/package.schema.json",
+  "id": "ioniq5-preconditioning-update",
+  "name": "Ioniq 5 Preconditioning (Update)",
+  "description": "An app that gives you a manual preconditioning button in your IONIQ 5. For updating via the Nemesis Package Manager.",
+  "version": "0.1.0",
+  "format": "zip",
+  "core": false,
+  "url": "https://github.com/paytondevs/ioniq5-preconditioning/releases/download/0.1-beta/Launchpad-update-usb.zip",
+  "sha256": "1d4a1dbafb45882c020c65e4838952cf460b070f37ff37400648cf70f21dbf72",
+  "size": 74697,
+  "extract": true,
+  "slot": "packages",
+  "profiles": ["nemesis"],
+  "requires": ["nemesis-core"],
+  "homepage": "https://github.com/paytondevs/ioniq5-preconditioning"
+}

@@ -13,6 +13,8 @@ import {
   validateRegistry,
   verifyAsset,
   versionBumpProblem,
+  zipEntries,
+  zipProblems,
 } from "../scripts/lib.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -22,6 +24,65 @@ const nemesis = registry.profiles.find((p) => p.data.id === "nemesis").data;
 const zipPkg = registry.packages.find((p) => p.data.id === "example-tool").data;
 
 const clone = (v) => structuredClone(v);
+
+/** A zip with stored (uncompressed) entries; CRCs are left at 0. */
+function makeZip(files, { zip64 = false } = {}) {
+  const local = [];
+  const central = [];
+  let offset = 0;
+  for (const [name, body = ""] of files) {
+    const nameBuf = Buffer.from(name);
+    const data = Buffer.from(body);
+    const header = Buffer.alloc(30);
+    header.writeUInt32LE(0x04034b50, 0);
+    header.writeUInt16LE(0x800, 6);
+    header.writeUInt32LE(data.length, 18);
+    header.writeUInt32LE(data.length, 22);
+    header.writeUInt16LE(nameBuf.length, 26);
+    local.push(header, nameBuf, data);
+    const entry = Buffer.alloc(46);
+    entry.writeUInt32LE(0x02014b50, 0);
+    entry.writeUInt16LE(0x800, 8);
+    entry.writeUInt32LE(data.length, 20);
+    entry.writeUInt32LE(data.length, 24);
+    entry.writeUInt16LE(nameBuf.length, 28);
+    entry.writeUInt32LE(offset, 42);
+    central.push(entry, nameBuf);
+    offset += 30 + nameBuf.length + data.length;
+  }
+  const directory = Buffer.concat(central);
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0);
+  end.writeUInt16LE(zip64 ? 0xffff : files.length, 8);
+  end.writeUInt16LE(zip64 ? 0xffff : files.length, 10);
+  end.writeUInt32LE(directory.length, 12);
+  end.writeUInt32LE(zip64 ? 0xffffffff : offset, 16);
+  const zip64Parts = [];
+  if (zip64) {
+    const record = Buffer.alloc(56);
+    record.writeUInt32LE(0x06064b50, 0);
+    record.writeBigUInt64LE(44n, 4);
+    record.writeBigUInt64LE(BigInt(files.length), 24);
+    record.writeBigUInt64LE(BigInt(files.length), 32);
+    record.writeBigUInt64LE(BigInt(directory.length), 40);
+    record.writeBigUInt64LE(BigInt(offset), 48);
+    const locator = Buffer.alloc(20);
+    locator.writeUInt32LE(0x07064b50, 0);
+    locator.writeBigUInt64LE(BigInt(offset + directory.length), 8);
+    locator.writeUInt32LE(1, 16);
+    zip64Parts.push(record, locator);
+  }
+  return Buffer.concat([...local, directory, ...zip64Parts, end]);
+}
+
+/** example-tool as a release with just a zip that carries NEMESIS.data. */
+function zipOnly() {
+  const pkg = clone(zipPkg);
+  delete pkg.data;
+  pkg.extract = true;
+  return pkg;
+}
+
 const profiles = new Map([["nemesis", nemesis]]);
 const packages = new Map(registry.packages.map((p) => [p.data.id, p.data]));
 
@@ -73,11 +134,55 @@ test("semantic: unknown required packages are rejected", () => {
   assert.match(problems.map(String).join("\n"), /required package "nope" does not exist/);
 });
 
-test("semantic: a tool in a slot with a dataFile must publish its NEMESIS.data", () => {
+test("semantic: a tool in a slot with a dataFile must publish its NEMESIS.data or unpack it", () => {
   const pkg = clone(zipPkg);
   delete pkg.data;
   const problems = packageProblems("packages/example-tool.json", pkg, profiles, packages);
-  assert.match(problems.map(String).join("\n"), /needs "data"/);
+  assert.match(problems.map(String).join("\n"), /publish it as "data".*"extract": true/);
+});
+
+test("semantic: an unpacked zip may carry NEMESIS.data instead of a data asset", () => {
+  assert.deepEqual(packageProblems("packages/example-tool.json", zipOnly(), profiles, packages).map(String), []);
+
+  // Not when the zip unpacks into a folder the data file isn't in.
+  const profile = clone(nemesis);
+  profile.slots.packages.extractDir = "packages/{id}";
+  const problems = packageProblems("packages/example-tool.json", zipOnly(), new Map([["nemesis", profile]]), packages);
+  assert.match(problems.map(String).join("\n"), /unpacks into "packages\/example-tool", so a zip can't put NEMESIS.data/);
+});
+
+test("zip entries: read from the central directory, ZIP64 included, from the whole file or its end", () => {
+  const files = [["NEMESIS.data", "data"], ["launchpad/"], ["launchpad\\install.sh", "#!/bin/sh"], ["./packages/x.zip", "x"]];
+  const expected = [
+    { path: "NEMESIS.data", dir: false },
+    { path: "launchpad", dir: true },
+    { path: "launchpad/install.sh", dir: false },
+    { path: "packages/x.zip", dir: false },
+  ];
+  for (const zip64 of [false, true]) {
+    const zip = makeZip(files, { zip64 });
+    assert.deepEqual(zipEntries(zip), expected, `whole file, zip64: ${zip64}`);
+    const cut = 40;
+    assert.deepEqual(zipEntries(zip.subarray(cut), cut), expected, `its end, zip64: ${zip64}`);
+  }
+  // An end that starts after the central directory can't be read.
+  const zip = makeZip(files);
+  assert.throws(() => zipEntries(zip.subarray(zip.length - 22), zip.length - 22), /out of reach/);
+  assert.throws(() => zipEntries(Buffer.from("not a zip")), /no end of central directory/);
+});
+
+test("zip inspection: NEMESIS.data comes from exactly one place, at the zip's top level", () => {
+  const check = (pkg, files) => zipProblems(pkg, profiles, makeZip(files)).join("\n");
+  assert.equal(check(zipOnly(), [["NEMESIS.data", "d"], ["launchpad/install.sh", "x"]]), "");
+  assert.equal(check(zipOnly(), [["nemesis.DATA", "d"]]), "", "FAT ignores case");
+  assert.match(check(zipOnly(), [["launchpad/install.sh", "x"]]), /the zip has no NEMESIS.data, and there is no "data" asset/);
+  assert.match(
+    check(zipOnly(), [["Launchpad-install-usb/NEMESIS.data", "d"]]),
+    /it has Launchpad-install-usb\/NEMESIS.data: zip the folder's contents, not the folder itself/,
+  );
+  assert.match(check(clone(zipPkg), [["NEMESIS.data", "d"]]), /publishes it as "data" too; keep one/);
+  assert.equal(check(clone(zipPkg), [["packages/inner.zip", "x"]]), "");
+  assert.match(zipProblems(zipOnly(), profiles, Buffer.from("nope")).join(), /not a zip the validator can read/);
 });
 
 test("semantic: the data asset must come from the same release", () => {
@@ -173,4 +278,25 @@ test("asset verification: matching hash passes, wrong hash and wrong size fail",
 
   const missing = await verifyAsset({ url: `${url}-missing`, sha256, size: 1 });
   assert.match(missing.join("\n"), /HTTP 404/);
+});
+
+test("asset verification: a verified zip's end goes to inspect", async (t) => {
+  const body = makeZip([["launchpad/install.sh", "x".repeat(64 * 1024)]]);
+  const sha256 = createHash("sha256").update(body).digest("hex");
+  const server = createServer((req, res) => {
+    res.writeHead(200, { "content-length": body.length });
+    // In pieces, the way a real download arrives.
+    for (let i = 0; i < body.length; i += 1000) res.write(body.subarray(i, i + 1000));
+    res.end();
+  });
+  await new Promise((r) => server.listen(0, "127.0.0.1", r));
+  t.after(() => server.close());
+  const asset = { url: `http://127.0.0.1:${server.address().port}/tool.zip`, sha256, size: body.length };
+
+  const inspect = (tail, start) => zipProblems(zipOnly(), profiles, tail, start);
+  assert.match((await verifyAsset(asset, { inspect })).join("\n"), /the zip has no NEMESIS.data/);
+  let inspected = false;
+  const wrong = await verifyAsset({ ...asset, sha256: "0".repeat(64) }, { inspect: () => ((inspected = true), []) });
+  assert.match(wrong.join("\n"), /sha256 is/);
+  assert.equal(inspected, false, "only a verified download is inspected");
 });

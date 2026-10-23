@@ -75,6 +75,26 @@ function templateProblems(file, label, template) {
   return out;
 }
 
+/** The folder a slot unpacks into ("" is the drive root), still templated. */
+function extractDirOf(slot) {
+  return slot.extractDir ?? (slot.path ? `${slot.path}/{id}` : "{id}");
+}
+
+function render(template, pkg) {
+  return template.replaceAll("{id}", pkg.id).replaceAll("{version}", pkg.version).replaceAll("{format}", pkg.format);
+}
+
+/**
+ * Where the slot's data file has to be inside the package's zip so that
+ * unpacking puts it in place, or null when it lies outside the unpack folder.
+ */
+export function dataPathInZip(pkg, slot) {
+  const dir = render(extractDirOf(slot), pkg);
+  const dataFile = render(slot.dataFile, pkg);
+  if (dir === "") return dataFile;
+  return dataFile.toLowerCase().startsWith(`${dir.toLowerCase()}/`) ? dataFile.slice(dir.length + 1) : null;
+}
+
 /** Profile checks the schema can't express. */
 export function profileProblems(file, profile) {
   const out = [];
@@ -108,7 +128,7 @@ export function profileProblems(file, profile) {
     if (slot.extract !== "never") {
       if (!slot.allow.includes("zip")) out.push(new Problem(file, `${label} extracts but does not allow zip`));
       // Empty means the drive root.
-      const extractDir = slot.extractDir ?? (slot.path ? `${slot.path}/{id}` : "{id}");
+      const extractDir = extractDirOf(slot);
       out.push(...templateProblems(file, `${label} extractDir`, extractDir));
       if (!extractDir.includes("{id}") && !holdsOne) {
         out.push(new Problem(file, `${label} extractDir "${extractDir}" must contain {id}, or the slot needs max: 1`));
@@ -173,13 +193,25 @@ export function packageProblems(file, pkg, profilesById, packagesById) {
     if (pkg.extract && slot.extract === "never") {
       out.push(new Problem(file, `extract is true but slot "${pkg.slot}" in profile "${profileId}" never extracts`));
     }
+    // The data file is either an asset of its own, or inside a zip that is
+    // unpacked (the app then always unpacks it).
     if (slot.dataFile !== undefined && !pkg.data) {
-      out.push(
-        new Problem(
-          file,
-          `slot "${pkg.slot}" in profile "${profileId}" writes ${slot.dataFile}, so the package needs "data": the ${slot.dataFile} asset from its release`,
-        ),
-      );
+      const where = `slot "${pkg.slot}" in profile "${profileId}"`;
+      if (pkg.format !== "zip" || !pkg.extract) {
+        out.push(
+          new Problem(
+            file,
+            `${where} writes ${slot.dataFile}: publish it as "data" (an asset of the same release), or put it in the zip and set "extract": true`,
+          ),
+        );
+      } else if (slot.extract !== "never" && dataPathInZip(pkg, slot) === null) {
+        out.push(
+          new Problem(
+            file,
+            `${where} unpacks into "${render(extractDirOf(slot), pkg)}", so a zip can't put ${slot.dataFile} in place; publish it as "data"`,
+          ),
+        );
+      }
     }
     if (slot.dataFile === undefined && pkg.data) {
       out.push(new Problem(file, `slot "${pkg.slot}" in profile "${profileId}" has no data file, so remove "data"`));
@@ -241,11 +273,16 @@ export function validateRegistry(registry, schemas) {
   return out;
 }
 
+/** How much of a zip's end is kept for `inspect`: room for its file list. */
+const ZIP_TAIL_BYTES = 16 * 1024 * 1024;
+
 /**
  * Downloads the asset and checks its size and SHA-256. Follows redirects
- * (GitHub sends release downloads to its object store).
+ * (GitHub sends release downloads to its object store). With `inspect`, the
+ * end of a verified download is passed to it as (tail, offset of the tail in
+ * the file), and the problems it returns are reported too.
  */
-export async function verifyAsset(pkg, { fetchImpl = fetch, timeoutMs = 10 * 60 * 1000 } = {}) {
+export async function verifyAsset(pkg, { fetchImpl = fetch, timeoutMs = 10 * 60 * 1000, inspect } = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -253,21 +290,110 @@ export async function verifyAsset(pkg, { fetchImpl = fetch, timeoutMs = 10 * 60 
     if (!res.ok) return [`URL returned HTTP ${res.status}`];
     const hash = createHash("sha256");
     let size = 0;
+    const tail = [];
+    let tailSize = 0;
     for await (const chunk of res.body) {
       size += chunk.length;
       if (size > pkg.size) return [`asset is larger than the declared size ${pkg.size}`];
       hash.update(chunk);
+      if (inspect) {
+        tail.push(chunk);
+        tailSize += chunk.length;
+        while (tailSize - tail[0].length >= ZIP_TAIL_BYTES) tailSize -= tail.shift().length;
+      }
     }
     const out = [];
     if (size !== pkg.size) out.push(`size is ${size}, manifest says ${pkg.size}`);
     const sha = hash.digest("hex");
     if (sha !== pkg.sha256) out.push(`sha256 is ${sha}, manifest says ${pkg.sha256}`);
+    if (out.length === 0 && inspect) out.push(...inspect(Buffer.concat(tail), size - tailSize));
     return out;
   } catch (err) {
     return [`URL not reachable: ${err.name === "AbortError" ? "timed out" : err.message}`];
   } finally {
     clearTimeout(timer);
   }
+}
+
+/**
+ * The entries listed in a zip's central directory, as `/`-separated paths
+ * the way the app reads them. `buf` is the end of the file, starting at byte
+ * `start` of it (0 for the whole file).
+ */
+export function zipEntries(buf, start = 0) {
+  const at = (offset, what) => {
+    const i = offset - start;
+    if (i < 0 || i + 4 > buf.length) throw new Error(`${what} is out of reach`);
+    return i;
+  };
+  let end = -1;
+  for (let i = buf.length - 22; i >= Math.max(0, buf.length - 22 - 0xffff); i--) {
+    if (buf.readUInt32LE(i) === 0x06054b50) {
+      end = i;
+      break;
+    }
+  }
+  if (end < 0) throw new Error("no end of central directory");
+  let count = buf.readUInt16LE(end + 10);
+  let offset = buf.readUInt32LE(end + 16);
+  if (count === 0xffff || offset === 0xffffffff) {
+    // ZIP64: a locator just before the end record points at the real one.
+    const locator = end - 20;
+    if (locator < 0 || buf.readUInt32LE(locator) !== 0x07064b50) throw new Error("damaged ZIP64 end record");
+    const record = at(Number(buf.readBigUInt64LE(locator + 8)), "the ZIP64 end record");
+    if (buf.readUInt32LE(record) !== 0x06064b50) throw new Error("damaged ZIP64 end record");
+    count = Number(buf.readBigUInt64LE(record + 32));
+    offset = Number(buf.readBigUInt64LE(record + 48));
+  }
+  const entries = [];
+  let p = count > 0 ? at(offset, "the central directory") : 0;
+  for (let n = 0; n < count; n++) {
+    if (p + 46 > buf.length || buf.readUInt32LE(p) !== 0x02014b50) throw new Error("damaged central directory");
+    const utf8 = (buf.readUInt16LE(p + 8) & 0x800) !== 0;
+    const nameLength = buf.readUInt16LE(p + 28);
+    const raw = buf.subarray(p + 46, p + 46 + nameLength).toString(utf8 ? "utf8" : "latin1");
+    const path = raw
+      .split(/[\\/]/)
+      .filter((part) => part && part !== ".")
+      .join("/");
+    entries.push({ path, dir: /[\\/]$/.test(raw) });
+    p += 46 + nameLength + buf.readUInt16LE(p + 30) + buf.readUInt16LE(p + 32);
+  }
+  return entries;
+}
+
+/**
+ * Checks a downloaded zip against its slots' data file: a package without a
+ * "data" asset must carry the file where unpacking puts it in place, and one
+ * with the asset must not carry it too (the app refuses that).
+ */
+export function zipProblems(pkg, profilesById, tail, start = 0) {
+  let files;
+  try {
+    files = zipEntries(tail, start).filter((e) => !e.dir).map((e) => e.path);
+  } catch (err) {
+    return [`asset is not a zip the validator can read: ${err.message}`];
+  }
+  const lower = new Set(files.map((f) => f.toLowerCase()));
+  const out = new Set();
+  for (const profileId of pkg.profiles) {
+    const slot = profilesById.get(profileId)?.slots[pkg.slot];
+    if (slot?.dataFile === undefined || slot.extract === "never") continue;
+    const inZip = dataPathInZip(pkg, slot);
+    if (inZip === null) continue;
+    const has = lower.has(inZip.toLowerCase());
+    if (!pkg.data && !has) {
+      const name = inZip.split("/").pop().toLowerCase();
+      const nested = files.find((f) => f.toLowerCase().endsWith(`/${name}`));
+      out.add(
+        `the zip has no ${inZip}` +
+          (nested ? ` (it has ${nested}: zip the folder's contents, not the folder itself)` : "") +
+          `, and there is no "data" asset`,
+      );
+    }
+    if (pkg.data && has) out.add(`the zip contains ${inZip} and the release publishes it as "data" too; keep one`);
+  }
+  return [...out];
 }
 
 function git(root, args) {
