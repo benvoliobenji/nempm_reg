@@ -1,0 +1,17 @@
+{
+  "$schema": "../schema/package.schema.json",
+  "id": "auto-dismiss",
+  "name": "Auto Dismiss",
+  "description": "On compatible systems, automatically dismisses the startup confirmation/warning screen that normally requires a tap before the infotainment interface is usable.",
+  "version": "4.2.0",
+  "format": "zip",
+  "core": false,
+  "url": "https://github.com/armandodollia/nemesis-package-builds/releases/download/v4.2/hkmc.factory82.bootready-v4.2.USB.zip",
+  "sha256": "513dff6063693fdf3ad326a07da4f900f3201943450d535ed68599472d9ceb86",
+  "size": 9529,
+  "extract": true,
+  "slot": "packages",
+  "profiles": ["nemesis"],
+  "requires": ["nemesis-core"],
+  "homepage": "https://github.com/armandodollia/nemesis-package-builds"
+}
