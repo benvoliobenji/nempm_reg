@@ -6,7 +6,7 @@
   "version": "2.0.2",
   "format": "zip",
   "core": false,
-  "url": "https://github.com/KramerTech/gen5-codec-patch/releases/download/v2.0.2/media-codecs-2.0.2-usb.zip",
+  "url": "https://github.com/KramerTech/gen5-codec-patch/releases/download/v2.0.2/media.codecs-2.0.2-usb.zip",
   "sha256": "1f661e52b65b6f4b7b8bccb7507892f5d4e2bf3ffe2a79d67b62256af08a01d1",
   "size": 335563,
   "extract": true,
