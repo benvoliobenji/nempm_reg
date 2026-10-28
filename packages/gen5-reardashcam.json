@@ -1,0 +1,17 @@
+{
+  "$schema": "../schema/package.schema.json",
+  "id": "gen5-reardashcam",
+  "name": "Gen5 Rear Dashcam",
+  "description": "Turns your backup camera into a dashcam for Hyundai, Kia and Genesis cars with the Gen5W head unit.",
+  "version": "0.8.0",
+  "format": "zip",
+  "core": false,
+  "url": "https://github.com/KramerTech/gen5-RearDashcam/releases/download/v0.8/dashcam-0.8-usb.zip",
+  "sha256": "cc82825741407557f3600ae0dd1399698453e5e286182e8c65335fe4a2057f75",
+  "size": 576515,
+  "extract": true,
+  "slot": "packages",
+  "profiles": ["nemesis"],
+  "requires": ["nemesis-core"],
+  "homepage": "https://github.com/KramerTech/gen5-RearDashcam"
+}
