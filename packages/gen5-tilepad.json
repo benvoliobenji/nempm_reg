@@ -1,0 +1,17 @@
+{
+  "$schema": "../schema/package.schema.json",
+  "id": "gen5-tilepad",
+  "name": "Gen5 Tilepad",
+  "description": "Barebones quick-launcher for features and apps in surrounding the nemesis ecosystem. (Conflicts with preconditioning package)",
+  "version": "1.0.0",
+  "format": "zip",
+  "core": false,
+  "url": "https://github.com/KramerTech/gen5-tilepad/releases/download/v1.0.0/Tilepad-install-usb.zip",
+  "sha256": "0c0608c2c5de91e6bf0abb89e16296920fb7a6ce0efca24159ebb81b66ad71ec",
+  "size": 79051,
+  "extract": true,
+  "slot": "packages",
+  "profiles": ["nemesis"],
+  "requires": ["nemesis-core"],
+  "homepage": "https://github.com/KramerTech/gen5-tilepad"
+}

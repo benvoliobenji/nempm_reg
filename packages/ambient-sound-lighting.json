@@ -1,0 +1,17 @@
+{
+  "$schema": "../schema/package.schema.json",
+  "id": "ambient-sound-lighting",
+  "name": "Ambient Sound Lighting",
+  "description": "Enable ambient lighting to respond to audio frequencies detected with the car microphone.",
+  "version": "1.0.0",
+  "format": "zip",
+  "core": false,
+  "url": "https://github.com/nmz787/gen5w-ambient-sound/releases/download/1.0.0/ambient-sound-usb.zip",
+  "sha256": "73d83b72f16d283a4c7cddbc0ffefdc7edee77599c62e7588873e51ecf65c22e",
+  "size": 84832,
+  "extract": true,
+  "slot": "packages",
+  "profiles": ["nemesis"],
+  "requires": ["nemesis-core"],
+  "homepage": "https://github.com/nmz787/gen5w-ambient-sound"
+}

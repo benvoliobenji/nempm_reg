@@ -1,0 +1,17 @@
+{
+  "$schema": "../schema/package.schema.json",
+  "id": "steering-arcade",
+  "name": "Steering Arcade",
+  "description": "A collection of demoscene inspired (in presentation, not code efficiency) art and silly graphical demos, based on the input of the Ioniq 5's steering wheel, accelerator pedal, and brake pedal.",
+  "version": "1.0.0",
+  "format": "zip",
+  "core": false,
+  "url": "https://github.com/nmz787/gen5w-steering-arcade/releases/download/1.0.0/steering-landscape-1.0.0-usb.zip",
+  "sha256": "e5898462224526670702f7557b9bde14cb5314bb491ee642fea04581c42bdc61",
+  "size": 78234,
+  "extract": true,
+  "slot": "packages",
+  "profiles": ["nemesis"],
+  "requires": ["nemesis-core"],
+  "homepage": "https://github.com/nmz787/gen5w-steering-arcade"
+}

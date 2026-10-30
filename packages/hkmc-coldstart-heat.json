@@ -1,0 +1,17 @@
+{
+  "$schema": "../schema/package.schema.json",
+  "id": "hkmc-coldstart-heat",
+  "name": "HKMC Coldstart Heat",
+  "description": "Auto-enable heated steering wheel + seats on cold start for Hyundai/Kia/Genesis Gen5W head units (NEMESIS package, with on-screen settings UI)",
+  "version": "1.2.0",
+  "format": "zip",
+  "core": false,
+  "url": "https://github.com/eclipseempire/gen5w-hkmc-coldstart-heat/releases/download/v1.2.0/hkmc-coldstart-heat-usb.zip",
+  "sha256": "c5a8d6d4c83e792ba32f89dc1e83227be2bb15112aed09e569827fe206dbd0b8",
+  "size": 12011,
+  "extract": true,
+  "slot": "packages",
+  "profiles": ["nemesis"],
+  "requires": ["nemesis-core"],
+  "homepage": "https://github.com/eclipseempire/gen5w-hkmc-coldstart-heat"
+}
