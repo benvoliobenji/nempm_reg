@@ -1,0 +1,82 @@
+name: Auto-update packages
+
+# Every night, moves each package to its repo's newest GitHub release and
+# pushes the result. See "Later releases" in CONTRIBUTING.md.
+on:
+  schedule:
+    - cron: "17 8 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: autoupdate
+  cancel-in-progress: false
+
+jobs:
+  autoupdate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      # The deploy key pushes past the main branch ruleset, which lists deploy
+      # keys as a bypass actor (see README.md). Unlike the workflow's own
+      # token, its push also starts Validate and Publish index.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ssh-key: ${{ secrets.REGISTRY_DEPLOY_KEY }}
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Exits 1 when a package needs a person to look at it. The packages
+      # that did update are still pushed, and the last step fails the run.
+      - name: Update packages
+        id: update
+        continue-on-error: true
+        run: node scripts/autoupdate.mjs --message "$RUNNER_TEMP/commit-message.txt"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Commit
+        id: commit
+        run: |
+          if git diff --quiet -- packages; then
+            echo "No package has a new release."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages
+          git commit --file "$RUNNER_TEMP/commit-message.txt"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      # What a PR with this commit would have to pass: schema, version bumps,
+      # and a fresh download and hash of every changed asset.
+      - name: Validate
+        if: steps.commit.outputs.changed == 'true'
+        run: node scripts/validate.mjs --base "origin/$GITHUB_REF_NAME"
+
+      - name: Push
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          HAS_DEPLOY_KEY: ${{ secrets.REGISTRY_DEPLOY_KEY != '' }}
+        run: |
+          if [ "$HAS_DEPLOY_KEY" != "true" ]; then
+            echo "::error::Set the REGISTRY_DEPLOY_KEY secret so this job can push past the ruleset on $GITHUB_REF_NAME (see README.md)."
+            exit 1
+          fi
+          git push origin "HEAD:$GITHUB_REF_NAME"
+
+      - name: Fail if a package needs a look
+        if: steps.update.outcome == 'failure'
+        run: |
+          echo "::error::Some packages were left as they are; the Update packages step and the job summary say why."
+          exit 1
