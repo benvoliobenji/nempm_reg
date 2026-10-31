@@ -3,7 +3,7 @@
   "id": "gen5-smarttube",
   "name": "Gen5 SmartTube",
   "description": "SmartTube, patched to run on Hyundai/Kia/Genesis Gen5W head units (Android 4.4.2, Telechips), as a NEMESIS package.",
-  "version": "32.68.0",
+  "version": "32.68.5",
   "format": "zip",
   "core": false,
   "url": "https://github.com/KramerTech/gen5-SmartTube/releases/download/v32.68-gen5w.5/smarttube-32.68-gen5w.5-usb.zip",
