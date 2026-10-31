@@ -10,6 +10,7 @@
   "scripts": {
     "validate": "node scripts/validate.mjs",
     "build": "node scripts/build-index.mjs",
+    "autoupdate": "node scripts/autoupdate.mjs",
     "test": "node --test"
   },
   "dependencies": {

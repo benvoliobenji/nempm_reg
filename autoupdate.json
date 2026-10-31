@@ -1,0 +1,12 @@
+{
+  "example-tool": {
+    "skip": true
+  },
+  "gen5-smarttube": {
+    "tag": "^v(\\d+)\\.(\\d+)-gen5w\\.(\\d+)$",
+    "version": "$1.$2.$3"
+  },
+  "hkmc-coldstart-heat": {
+    "repo": "eclipseempire/hkmc-coldstart-heat"
+  }
+}

@@ -108,6 +108,45 @@ and `size` (and, for a zip, where its `NEMESIS.data` comes from). Open the PR
 when it prints `OK`. A Code Owner reviews and merges it, and the new index goes
 live on Pages within one CI run. The app picks it up the next time it refreshes.
 
+## Later releases
+
+Once your package is in the registry, its new releases need no PR. Every night a
+GitHub Action takes your repo's newest release, checks it as CI checks a PR, and
+updates `version`, `url`, `sha256` and `size` (and `data`) on `main`. Other
+fields stay as they are; change those with a PR.
+
+It takes a release that:
+
+- is published and not marked as a pre-release
+- has a tag that reads as a version higher than the registry's: `v1.5.0`,
+  `1.5.0` and `v1.5` (read as `1.5.0`) all work, `v1.5.0-beta` does not
+- has exactly one asset named like the one the registry has now, give or take
+  its version numbers and letter case: after `my.tool-1.4.0-usb.zip` it takes
+  `my.tool-1.5-usb.zip` or `My.Tool-1.5.0-USB.zip`, but not `my.tool-1.5.0.zip`
+- has a `NEMESIS.data` asset too, if the package has a `data` file
+- passes every check in step 4
+
+A release that doesn't fit is left out, and the nightly run says why. If your
+tags or asset names work differently, a maintainer adds a rule for your package
+to [`autoupdate.json`](autoupdate.json):
+
+```json
+{
+  "gen5-smarttube": {
+    "tag": "^v(\\d+)\\.(\\d+)-gen5w\\.(\\d+)$",
+    "version": "$1.$2.$3"
+  }
+}
+```
+
+| Key       | Meaning                                                                                                                                 |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `skip`    | `true` to never update the package by itself.                                                                                           |
+| `repo`    | `owner/name` to take releases from, when the repo in `url` has moved.                                                                   |
+| `asset`   | A regex the whole asset name must match, in place of the name it has now. Case is ignored.                                              |
+| `tag`     | A regex a release's tag must match; other releases are ignored. This picks one package's releases out of a repo that publishes several. |
+| `version` | The version, made from the `tag` regex's groups (`$1`, `$2`, …), for tags that don't read as one. Above, `v32.68-gen5w.5` is `32.68.5`. |
+
 ## Changing a profile
 
 Profiles describe the folder layout a device expects. Bump `version` on every

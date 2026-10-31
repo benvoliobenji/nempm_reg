@@ -7,8 +7,9 @@ repo of JSON files, in the spirit of a Scoop bucket:
 packages/<id>.json          one manifest per package
 profiles/<device>.json      the USB layout each target device expects
 schema/*.schema.json        JSON Schema for profiles and packages
-scripts/                    validation and build scripts for the registry
-test/                       unit tests for the validator
+autoupdate.json             rules for the nightly update of packages
+scripts/                    validation, build and update scripts for the registry
+test/                       unit tests for the scripts
 ```
 
 To add or update a package, see [CONTRIBUTING.md](CONTRIBUTING.md).
@@ -60,10 +61,11 @@ the new version and offers to migrate drives that were written with the old one.
 
 ```shell
 pnpm install
-pnpm test                                 # validator unit tests
+pnpm test                                 # unit tests
 pnpm validate                             # offline checks of every file
 node scripts/validate.mjs --base main     # + version bumps and asset hash checks for changed files
 node scripts/validate.mjs --verify-all    # download and hash every asset
+node scripts/autoupdate.mjs --dry-run     # what the nightly update would change
 pnpm build                                # writes dist/index.json
 ```
 
